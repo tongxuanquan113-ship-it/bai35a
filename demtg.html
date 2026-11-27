@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Đồng Hồ Đếm Ngược</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: Arial, sans-serif;
+    background-color: #f0f4f8;
+    margin: 0;
+    padding: 30px 20px;
+    color: #1f2937;
+  }
+
+  /* ===== MENU ===== */
+  .nav { background-color: #1e40af; margin: -30px -20px 30px; padding: 0 20px; }
+  .nav ul { list-style: none; margin: 0 auto; padding: 0; max-width: 1100px; display: flex; gap: 4px; flex-wrap: wrap; }
+  .nav a { display: block; padding: 15px 18px; color: #dbeafe; text-decoration: none; font-weight: bold; }
+  .nav a:hover { color: #fff; }
+  .nav a.active { color: #fff; box-shadow: inset 0 -3px 0 #93c5fd; }
+
+  /* ===== ĐỒNG HỒ ===== */
+  .card {
+    max-width: 460px; margin: auto; background: #fff; text-align: center;
+    padding: 32px 26px; border-radius: 12px;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+  }
+  h1 { color: #2563eb; margin: 0 0 6px; font-size: 1.6rem; }
+  .sub { color: #6b7280; margin: 0 0 24px; font-size: .95rem; }
+
+  .time {
+    font-family: "Courier New", monospace;
+    font-size: 5rem; font-weight: bold; line-height: 1;
+    color: #1e40af; letter-spacing: 2px;
+    margin: 8px 0 20px;
+    font-variant-numeric: tabular-nums;
+  }
+  .bar { height: 10px; background: #e5e7eb; border-radius: 99px; overflow: hidden; margin-bottom: 24px; }
+  .bar span { display: block; height: 100%; width: 100%; background: #2563eb; transition: width .25s linear; }
+
+  /* Dưới 1 phút: đổi màu đỏ + nhấp nháy */
+  .warning .time { color: #e11d48; animation: pulse 1s ease-in-out infinite; }
+  .warning .bar span { background: #e11d48; }
+  @keyframes pulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50%      { transform: scale(1.08); opacity: .65; }
+  }
+
+  .controls { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+  button {
+    padding: 13px 22px; font-size: 16px; border: 0; border-radius: 8px; cursor: pointer;
+    background: #2563eb; color: #fff;
+  }
+  button:hover { background: #1d4ed8; }
+  button.secondary { background: #e5e7eb; color: #1f2937; }
+  button.secondary:hover { background: #d1d5db; }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  button:focus-visible { outline: 3px solid rgba(37, 99, 235, .4); outline-offset: 2px; }
+  .sync { margin: 18px 0 0; font-size: .8rem; color: #9ca3af; }
+
+  /* ===== MODAL ===== */
+  dialog {
+    border: 0; border-radius: 14px; padding: 30px 28px; max-width: 380px; width: calc(100% - 40px);
+    text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,.3);
+  }
+  dialog::backdrop { background: rgba(15, 23, 42, .6); }
+  dialog[open] { animation: pop .25s ease-out; }
+  @keyframes pop { from { transform: scale(.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  dialog h2 { margin: 0 0 8px; color: #e11d48; }
+  dialog p { margin: 0 0 20px; color: #4b5563; }
+
+  @media (max-width: 480px) {
+    body { padding: 30px 12px; }
+    .nav { margin: -30px -12px 20px; padding: 0 12px; }
+    .card { padding: 24px 16px; }
+    .time { font-size: 3.6rem; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .warning .time { animation: none; }
+    dialog[open] { animation: none; }
+  }
+</style>
+</head>
+<body>
+
+<nav class="nav" aria-label="Menu chính">
+  <ul>
+    <li><a href="index.html">Trang chủ</a></li>
+    <li><a href="dang-ky.html">Đăng Ký</a></li>
+    <li><a href="dem-nguoc.html" class="active">Đếm ngược</a></li>
+  </ul>
+</nav>
+
+<main class="card" id="clock">
+  <h1>⏱️ Đồng Hồ Đếm Ngược</h1>
+  <p class="sub">10 phút, hiển thị dạng MM:SS</p>
+
+  <div class="time" id="time" role="timer" aria-label="Thời gian còn lại">10:00</div>
+  <div class="bar" aria-hidden="true"><span id="progress"></span></div>
+
+  <div class="controls">
+    <button id="startBtn">Bắt đầu</button>
+    <button id="pauseBtn" class="secondary" disabled>Tạm dừng</button>
+    <button id="resetBtn" class="secondary">Đặt lại</button>
+  </div>
+  <p class="sync" id="syncInfo"></p>
+</main>
+
+<dialog id="doneModal" role="alertdialog" aria-labelledby="doneTitle" aria-describedby="doneText">
+  <h2 id="doneTitle">⏰ Hết giờ!</h2>
+  <p id="doneText">Đồng hồ đã đếm ngược xong 10 phút.</p>
+  <div class="controls">
+    <button id="againBtn">Đặt lại</button>
+    <button id="closeBtn" class="secondary">Đóng</button>
+  </div>
+</dialog>
+
+<script>
+(function () {
+  "use strict";
+
+  var DURATION_MS = 10 * 60 * 1000;   // 10 phút
+  var TICK_MS = 250;                  // kiểm tra 4 lần/giây cho mượt, không bị lệch giây
+
+  var timeEl = document.getElementById("time");
+  var progressEl = document.getElementById("progress");
+  var clockEl = document.getElementById("clock");
+  var startBtn = document.getElementById("startBtn");
+  var pauseBtn = document.getElementById("pauseBtn");
+  var resetBtn = document.getElementById("resetBtn");
+  var modal = document.getElementById("doneModal");
+  var syncInfo = document.getElementById("syncInfo");
+
+  var remaining = DURATION_MS;  // ms còn lại khi đang dừng
+  var endTime = 0;              // mốc thời gian kết thúc (khi đang chạy)
+  var timerId = null;           // id của setInterval, null = không chạy
+  var serverOffset = 0;         // chênh lệch giữa giờ server và giờ máy người dùng
+
+  // "Bây giờ" theo giờ server (nếu đồng bộ được), nếu không thì theo giờ máy
+  function now() { return Date.now() + serverOffset; }
+
+  function pad(n) { return n < 10 ? "0" + n : String(n); }
+
+  function render(ms) {
+    var totalSec = Math.ceil(ms / 1000);   // làm tròn lên: 10:00 giữ đến khi qua 1 giây đầu
+    var text = pad(Math.floor(totalSec / 60)) + ":" + pad(totalSec % 60);
+    timeEl.textContent = text;
+    document.title = text + " - Đếm ngược";
+    progressEl.style.width = (ms / DURATION_MS * 100) + "%";
+    clockEl.classList.toggle("warning", ms > 0 && ms < 60000);  // dưới 1 phút
+  }
+
+  function stop() {
+    if (timerId !== null) {
+      clearInterval(timerId);   // luôn dọn interval để không bị rò rỉ / chạy chồng
+      timerId = null;
+    }
+  }
+
+  function tick() {
+    remaining = Math.max(0, endTime - now());
+    render(remaining);
+    if (remaining === 0) finish();
+  }
+
+  function start() {
+    if (timerId !== null || remaining <= 0) return;  // chặn tạo 2 interval cùng lúc
+    endTime = now() + remaining;
+    timerId = setInterval(tick, TICK_MS);
+    startBtn.disabled = true;
+    pauseBtn.disabled = false;
+    tick();
+  }
+
+  function pause() {
+    if (timerId === null) return;
+    remaining = Math.max(0, endTime - now());
+    stop();
+    startBtn.textContent = "Tiếp tục";
+    startBtn.disabled = false;
+    pauseBtn.disabled = true;
+  }
+
+  function reset() {
+    stop();
+    remaining = DURATION_MS;
+    render(remaining);
+    startBtn.textContent = "Bắt đầu";
+    startBtn.disabled = false;
+    pauseBtn.disabled = true;
+  }
+
+  function finish() {
+    stop();
+    render(0);
+    startBtn.disabled = true;
+    pauseBtn.disabled = true;
+    if (typeof modal.showModal === "function") modal.showModal();
+    else alert("Hết giờ!");   // dự phòng cho trình duyệt rất cũ
+  }
+
+  startBtn.addEventListener("click", start);
+  pauseBtn.addEventListener("click", pause);
+  resetBtn.addEventListener("click", reset);
+  document.getElementById("againBtn").addEventListener("click", function () { modal.close(); reset(); });
+  document.getElementById("closeBtn").addEventListener("click", function () { modal.close(); });
+
+  // Rời trang / đóng tab: dọn interval
+  window.addEventListener("pagehide", stop);
+
+  // Quay lại tab sau khi bị trình duyệt làm chậm: cập nhật ngay
+  document.addEventListener("visibilitychange", function () {
+    if (!document.hidden && timerId !== null) tick();
+  });
+
+  // Đồng bộ giờ server: lấy header "Date" của chính trang này
+  function syncServerTime() {
+    var t0 = Date.now();
+    fetch(location.href, { method: "HEAD", cache: "no-store" })
+      .then(function (res) {
+        var header = res.headers.get("Date");
+        if (!header) throw new Error("no-date");
+        var t1 = Date.now();
+        var serverMs = new Date(header).getTime() + (t1 - t0) / 2;  // bù nửa độ trễ mạng
+        serverOffset = serverMs - t1;
+        syncInfo.textContent = "Đã đồng bộ với giờ server (lệch " + Math.round(serverOffset / 1000) + " giây so với máy bạn).";
+      })
+      .catch(function () {
+        syncInfo.textContent = "Đang dùng giờ của máy bạn.";
+      });
+  }
+
+  render(remaining);
+  syncServerTime();
+})();
+</script>
+</body>
+</html>
