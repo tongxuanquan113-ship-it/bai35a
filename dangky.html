@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Đăng Ký</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: Arial, sans-serif;
+    background-color: #f0f4f8;
+    margin: 0;
+    padding: 30px 20px;
+    color: #1f2937;
+  }
+
+  /* ===== MENU ===== */
+  .nav { background-color: #1e40af; margin: -30px -20px 30px; padding: 0 20px; }
+  .nav ul { list-style: none; margin: 0 auto; padding: 0; max-width: 1100px; display: flex; gap: 4px; }
+  .nav a { display: block; padding: 15px 18px; color: #dbeafe; text-decoration: none; font-weight: bold; }
+  .nav a:hover { color: #fff; }
+  .nav a.active { color: #fff; box-shadow: inset 0 -3px 0 #93c5fd; }
+
+  /* ===== FORM ===== */
+  .card {
+    max-width: 440px; margin: auto; background: #fff;
+    padding: 30px 26px; border-radius: 12px;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+  }
+  h1 { text-align: center; color: #2563eb; margin: 0 0 6px; font-size: 1.6rem; }
+  .sub { text-align: center; color: #6b7280; margin: 0 0 24px; font-size: .95rem; }
+  .field { margin-bottom: 18px; }
+  label { display: block; font-weight: bold; font-size: .92rem; margin-bottom: 6px; }
+  input[type="text"], input[type="email"], input[type="password"] {
+    width: 100%; padding: 13px; font-size: 16px;
+    border: 1px solid #ccc; border-radius: 8px;
+  }
+  input:focus-visible, button:focus-visible {
+    outline: 3px solid rgba(37, 99, 235, .35); border-color: #2563eb;
+  }
+  .pw-wrap { position: relative; }
+  .pw-wrap input { padding-right: 70px; }
+  .toggle {
+    position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+    background: none; border: 0; padding: 6px 8px; cursor: pointer;
+    color: #2563eb; font-size: .85rem; width: auto;
+  }
+  .invalid input[type="text"], .invalid input[type="email"], .invalid input[type="password"] { border-color: #e11d48; }
+  .error { display: none; margin: 6px 0 0; font-size: .85rem; color: #e11d48; }
+  .invalid .error { display: block; }
+  .rules { list-style: none; padding: 0; margin: 8px 0 0; font-size: .85rem; color: #6b7280; }
+  .rules li::before { content: "○ "; }
+  .rules li.met { color: #15803d; }
+  .rules li.met::before { content: "✓ "; }
+  .terms { display: flex; gap: 10px; align-items: flex-start; }
+  .terms input { width: 18px; height: 18px; margin-top: 3px; flex-shrink: 0; accent-color: #2563eb; }
+  .terms label { font-weight: normal; margin: 0; }
+  button[type="submit"] {
+    width: 100%; margin-top: 8px; padding: 13px; font-size: 16px;
+    background: #2563eb; color: #fff; border: 0; border-radius: 8px; cursor: pointer;
+  }
+  button[type="submit"]:hover { background: #1d4ed8; }
+  button[type="submit"]:disabled { opacity: .6; cursor: wait; }
+  .msg { display: none; margin-top: 16px; padding: 12px 14px; border-radius: 8px; font-size: .92rem; }
+  .msg.show { display: block; }
+  .msg.success { background: #dcfce7; color: #15803d; border: 1px solid #86efac; }
+  .msg.fail { background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; }
+
+  @media (max-width: 480px) {
+    body { padding: 30px 12px; }
+    .nav { margin: -30px -12px 20px; padding: 0 12px; }
+    .card { padding: 24px 18px; }
+    h1 { font-size: 1.4rem; }
+  }
+</style>
+</head>
+<body>
+
+<nav class="nav" aria-label="Menu chính">
+  <ul>
+    <li><a href="index.html">Trang chủ</a></li>
+    <li><a href="dangky.html" class="active">Đăng Ký</a></li>
+            <li><a href="demnguoc.html">Đếm ngược</a></li>
+  </ul>
+</nav>
+
+<main class="card">
+  <h1>Tạo tài khoản</h1>
+  <p class="sub">Điền thông tin bên dưới để đăng ký.</p>
+
+  <form id="regForm" novalidate>
+    <div class="field" data-field="name">
+      <label for="name">Họ và tên</label>
+      <input type="text" id="name" autocomplete="name" maxlength="80" required>
+      <p class="error">Vui lòng nhập họ tên (ít nhất 2 ký tự).</p>
+    </div>
+
+    <div class="field" data-field="email">
+      <label for="email">Email</label>
+      <input type="email" id="email" autocomplete="email" maxlength="120" required>
+      <p class="error" id="emailErr">Email không hợp lệ, ví dụ: ten@example.com.</p>
+    </div>
+
+    <div class="field" data-field="password">
+      <label for="password">Mật khẩu</label>
+      <div class="pw-wrap">
+        <input type="password" id="password" autocomplete="new-password" maxlength="128" required aria-describedby="pwRules">
+        <button type="button" class="toggle" id="toggle" aria-pressed="false">Hiện</button>
+      </div>
+      <ul class="rules" id="pwRules">
+        <li data-rule="len">Ít nhất 8 ký tự</li>
+        <li data-rule="upper">Có chữ hoa (A–Z)</li>
+        <li data-rule="lower">Có chữ thường (a–z)</li>
+        <li data-rule="digit">Có chữ số (0–9)</li>
+      </ul>
+      <p class="error">Mật khẩu chưa đáp ứng đủ các yêu cầu trên.</p>
+    </div>
+
+    <div class="field" data-field="agree">
+      <div class="terms">
+        <input type="checkbox" id="agree">
+        <label for="agree">Tôi đồng ý với điều khoản sử dụng</label>
+      </div>
+      <p class="error">Bạn cần đồng ý điều khoản để tiếp tục.</p>
+    </div>
+
+    <button type="submit" id="submitBtn">Đăng ký</button>
+    <div class="msg" id="msg" role="status" aria-live="polite"></div>
+  </form>
+</main>
+
+<script>
+(function () {
+  "use strict";
+
+  var STORAGE_KEY = "users";
+  var form = document.getElementById("regForm");
+  var els = {
+    name: document.getElementById("name"),
+    email: document.getElementById("email"),
+    password: document.getElementById("password"),
+    agree: document.getElementById("agree")
+  };
+  var msg = document.getElementById("msg");
+  var submitBtn = document.getElementById("submitBtn");
+  var emailErr = document.getElementById("emailErr");
+  var EMAIL_MSG = "Email không hợp lệ, ví dụ: ten@example.com.";
+  var EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+  function passwordChecks(pw) {
+    return {
+      len: pw.length >= 8,
+      upper: /[A-Z]/.test(pw),
+      lower: /[a-z]/.test(pw),
+      digit: /[0-9]/.test(pw)
+    };
+  }
+
+  function setState(key, ok) {
+    document.querySelector('[data-field="' + key + '"]').classList.toggle("invalid", !ok);
+    return ok;
+  }
+
+  var validators = {
+    name: function () { return setState("name", els.name.value.trim().length >= 2); },
+    email: function () {
+      emailErr.textContent = EMAIL_MSG;
+      return setState("email", EMAIL_RE.test(els.email.value.trim()));
+    },
+    password: function () {
+      var c = passwordChecks(els.password.value);
+      return setState("password", c.len && c.upper && c.lower && c.digit);
+    },
+    agree: function () { return setState("agree", els.agree.checked); }
+  };
+
+  // Checklist mật khẩu cập nhật theo thời gian thực
+  els.password.addEventListener("input", function () {
+    var c = passwordChecks(els.password.value);
+    document.querySelectorAll("#pwRules li").forEach(function (li) {
+      li.classList.toggle("met", c[li.dataset.rule]);
+    });
+    if (document.querySelector('[data-field="password"]').classList.contains("invalid")) validators.password();
+  });
+
+  ["name", "email", "password"].forEach(function (k) {
+    els[k].addEventListener("blur", validators[k]);
+  });
+  els.agree.addEventListener("change", validators.agree);
+
+  // Hiện / ẩn mật khẩu
+  var toggle = document.getElementById("toggle");
+  toggle.addEventListener("click", function () {
+    var show = els.password.type === "password";
+    els.password.type = show ? "text" : "password";
+    toggle.textContent = show ? "Ẩn" : "Hiện";
+    toggle.setAttribute("aria-pressed", String(show));
+  });
+
+  function showMessage(text, type) {
+    msg.textContent = text; // textContent: không chèn HTML => tránh XSS
+    msg.className = "msg show " + type;
+  }
+
+  function readUsers() {
+    try {
+      var data = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+      return Array.isArray(data) ? data : [];
+    } catch (e) { return []; }
+  }
+
+  function toHex(buf) {
+    return Array.prototype.map.call(new Uint8Array(buf), function (b) {
+      return b.toString(16).padStart(2, "0");
+    }).join("");
+  }
+
+  // Băm mật khẩu + salt ngẫu nhiên bằng SHA-256 (Web Crypto API)
+  async function hashPassword(pw) {
+    var salt = toHex(crypto.getRandomValues(new Uint8Array(16)));
+    var digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(salt + pw));
+    return { salt: salt, hash: toHex(digest) };
+  }
+
+  form.addEventListener("submit", async function (e) {
+    e.preventDefault(); // chặn trình duyệt tải lại trang
+    msg.className = "msg";
+
+    // Chạy hết các validator để hiện tất cả lỗi cùng lúc
+    var results = Object.keys(validators).map(function (k) { return validators[k](); });
+    if (results.indexOf(false) !== -1) {
+      var firstBad = form.querySelector(".invalid input");
+      if (firstBad) firstBad.focus();
+      return;
+    }
+
+    var email = els.email.value.trim().toLowerCase();
+    var users = readUsers();
+    if (users.some(function (u) { return u.email === email; })) {
+      emailErr.textContent = "Email này đã được đăng ký.";
+      setState("email", false);
+      els.email.focus();
+      return;
+    }
+
+    submitBtn.disabled = true;
+    try {
+      if (!window.crypto || !crypto.subtle) throw new Error("no-crypto");
+      var name = els.name.value.trim();
+      var h = await hashPassword(els.password.value);
+      users.push({
+        name: name,
+        email: email,
+        passwordHash: h.hash,
+        salt: h.salt,
+        agreedTerms: true,
+        createdAt: new Date().toISOString()
+      });
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(users));
+      form.reset();
+      document.querySelectorAll("#pwRules li").forEach(function (li) { li.classList.remove("met"); });
+      showMessage("Đăng ký thành công! Chào mừng bạn, " + name + ".", "success");
+    } catch (err) {
+      showMessage("Không thể lưu dữ liệu. Hãy mở trang qua HTTPS và bật LocalStorage rồi thử lại.", "fail");
+    } finally {
+      submitBtn.disabled = false;
+    }
+  });
+})();
+</script>
+</body>
+</html>
