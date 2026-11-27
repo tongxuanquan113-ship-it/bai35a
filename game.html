@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Game Hứng Táo</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: Arial, sans-serif;
+    background-color: #f0f4f8;
+    margin: 0;
+    padding: 30px 20px;
+    color: #1f2937;
+  }
+
+  /* ===== MENU ===== */
+  .nav { background-color: #1e40af; margin: -30px -20px 30px; padding: 0 20px; }
+  .nav ul { list-style: none; margin: 0 auto; padding: 0; max-width: 1100px; display: flex; gap: 4px; flex-wrap: wrap; }
+  .nav a { display: block; padding: 15px 18px; color: #dbeafe; text-decoration: none; font-weight: bold; }
+  .nav a:hover { color: #fff; }
+  .nav a.active { color: #fff; box-shadow: inset 0 -3px 0 #93c5fd; }
+
+  /* ===== TRANG GAME ===== */
+  .wrap { max-width: 500px; margin: auto; text-align: center; }
+  h1 { color: #2563eb; margin: 0 0 16px; font-size: 1.6rem; }
+
+  .hud {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 12px; font-size: 1.1rem; font-weight: bold;
+  }
+  .hud span.value { color: #1e40af; }
+  #lives { color: #e11d48; }
+
+  /* Khung game: 500 x 400, bo góc, nền sáng, relative, overflow hidden */
+  #game-container {
+    position: relative;
+    width: 500px;
+    max-width: 100%;
+    height: 400px;
+    margin: 0 auto;
+    background: linear-gradient(#e0f2fe, #f0fdf4);
+    border: 3px solid #1e40af;
+    border-radius: 16px;
+    overflow: hidden;
+    touch-action: none;
+  }
+
+  /* Giỏ hứng (hình chữ nhật màu nâu) */
+  #basket {
+    position: absolute;
+    bottom: 8px;
+    left: 0;
+    width: 90px;
+    height: 26px;
+    background: #8b5a2b;
+    border-radius: 4px 4px 16px 16px;
+    box-shadow: inset 0 4px 0 #a9743c;
+  }
+
+  /* Quả táo */
+  #apple {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 30px;
+    height: 30px;
+    background: radial-gradient(circle at 35% 30%, #fb7185, #dc2626);
+    border-radius: 50%;
+  }
+  #apple::after {  /* cuống táo */
+    content: "";
+    position: absolute; top: -6px; left: 13px;
+    width: 3px; height: 8px; background: #166534; border-radius: 2px;
+  }
+
+  /* Lớp phủ Game Over */
+  #overlay {
+    position: absolute; inset: 0;
+    display: none; flex-direction: column; align-items: center; justify-content: center;
+    background: rgba(15, 23, 42, .72); color: #fff;
+  }
+  #overlay.show { display: flex; }
+  #overlay h2 { margin: 0 0 8px; font-size: 2.4rem; color: #fda4af; }
+  #overlay p { margin: 0; font-size: 1.1rem; }
+
+  .controls { margin-top: 16px; display: flex; gap: 10px; justify-content: center; align-items: center; flex-wrap: wrap; }
+  button {
+    padding: 13px 22px; font-size: 16px; border: 0; border-radius: 8px; cursor: pointer;
+    background: #2563eb; color: #fff;
+  }
+  button:hover { background: #1d4ed8; }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  button:focus-visible { outline: 3px solid rgba(37, 99, 235, .4); outline-offset: 2px; }
+  .pad { display: none; background: #e5e7eb; color: #1f2937; min-width: 64px; user-select: none; touch-action: none; }
+  .pad:hover { background: #d1d5db; }
+  .hint { margin: 14px 0 0; color: #6b7280; font-size: .9rem; }
+
+  @media (hover: none), (pointer: coarse) { .pad { display: inline-block; } }
+  @media (max-width: 480px) {
+    body { padding: 30px 12px; }
+    .nav { margin: -30px -12px 20px; padding: 0 12px; }
+  }
+</style>
+</head>
+<body>
+
+<nav class="nav" aria-label="Menu chính">
+  <ul>
+    <li><a href="index.html">Trang chủ</a></li>
+    <li><a href="dangky.html">Đăng Ký</a></li>
+    <li><a href="demtg.html">Đếm ngược</a></li>
+    <li><a href="game.html" class="active">Game</a></li>
+  </ul>
+</nav>
+
+<main class="wrap">
+  <h1>🍎 Game Hứng Táo</h1>
+
+  <div class="hud">
+    <div>Điểm: <span class="value" id="score">0</span></div>
+    <div>Mạng: ❤️ <span class="value" id="lives">3</span></div>
+  </div>
+
+  <div id="game-container">
+    <div id="apple"></div>
+    <div id="basket"></div>
+    <div id="overlay" role="alert">
+      <h2>Game Over</h2>
+      <p id="finalScore"></p>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button class="pad" id="leftBtn" aria-label="Sang trái">◀</button>
+    <button id="startBtn">Bắt đầu</button>
+    <button class="pad" id="rightBtn" aria-label="Sang phải">▶</button>
+  </div>
+  <p class="hint">Dùng phím ← → để di chuyển giỏ và hứng táo. Hụt 3 quả là thua.</p>
+</main>
+
+<script>
+(function () {
+  "use strict";
+
+  var BASKET_SPEED = 380;   // px/giây
+  var START_FALL = 150;     // tốc độ rơi ban đầu (px/giây)
+  var SPEED_STEP = 12;      // mỗi lần hứng được, táo rơi nhanh hơn một chút
+  var MAX_FALL = 420;       // giới hạn tốc độ
+  var START_LIVES = 3;
+
+  var container = document.getElementById("game-container");
+  var basket = document.getElementById("basket");
+  var apple = document.getElementById("apple");
+  var scoreEl = document.getElementById("score");
+  var livesEl = document.getElementById("lives");
+  var overlay = document.getElementById("overlay");
+  var finalScore = document.getElementById("finalScore");
+  var startBtn = document.getElementById("startBtn");
+
+  var W = 500, H = 400;     // kích thước thật của khung, đọc lại khi bắt đầu
+  var basketX = 0, appleX = 0, appleY = 0;
+  var fallSpeed = START_FALL, score = 0, lives = START_LIVES;
+  var running = false, rafId = null, lastTime = 0;
+  var keys = { left: false, right: false };
+
+  function readSize() {
+    W = container.clientWidth;
+    H = container.clientHeight;
+  }
+
+  function setBasket(x) {
+    // kẹp trong khoảng [0, W - bề rộng giỏ] để không chạy ra ngoài khung
+    basketX = Math.max(0, Math.min(W - basket.offsetWidth, x));
+    basket.style.left = basketX + "px";
+  }
+
+  function placeApple() {
+    apple.style.left = appleX + "px";
+    apple.style.top = appleY + "px";
+  }
+
+  // Táo hồi sinh ở đỉnh, vị trí ngang ngẫu nhiên
+  function spawnApple() {
+    appleX = Math.random() * (W - apple.offsetWidth);
+    appleY = -apple.offsetHeight;
+    placeApple();
+  }
+
+  // Va chạm: hai hình chữ nhật giao nhau
+  function isColliding() {
+    var aw = apple.offsetWidth, ah = apple.offsetHeight;
+    var bw = basket.offsetWidth, bh = basket.offsetHeight;
+    var bx = basketX, by = basket.offsetTop;
+    return appleX < bx + bw && appleX + aw > bx &&
+           appleY < by + bh && appleY + ah > by;
+  }
+
+  function updateHud() {
+    scoreEl.textContent = score;
+    livesEl.textContent = lives;
+  }
+
+  function loop(t) {
+    if (!running) return;
+
+    // dt (giây) tính theo thời gian thật; chặn tối đa 0.05s để không "nhảy" khi tab bị treo
+    var dt = Math.min((t - lastTime) / 1000, 0.05);
+    lastTime = t;
+
+    // Điều khiển giỏ
+    var dir = (keys.right ? 1 : 0) - (keys.left ? 1 : 0);
+    if (dir !== 0) setBasket(basketX + dir * BASKET_SPEED * dt);
+
+    // Táo rơi
+    appleY += fallSpeed * dt;
+    placeApple();
+
+    if (isColliding()) {
+      score++;
+      fallSpeed = Math.min(MAX_FALL, fallSpeed + SPEED_STEP);
+      updateHud();
+      spawnApple();
+    } else if (appleY >= H) {          // chạm đáy mà không hứng được
+      lives--;
+      updateHud();
+      if (lives <= 0) { gameOver(); return; }
+      spawnApple();
+    }
+
+    rafId = requestAnimationFrame(loop);
+  }
+
+  function stopLoop() {
+    running = false;
+    if (rafId !== null) {
+      cancelAnimationFrame(rafId);     // dừng vòng lặp, không để chạy ngầm
+      rafId = null;
+    }
+  }
+
+  function gameOver() {
+    stopLoop();
+    finalScore.textContent = "Điểm của bạn: " + score;
+    overlay.classList.add("show");
+    startBtn.textContent = "Chơi lại";
+    startBtn.disabled = false;
+  }
+
+  function start() {
+    if (running) return;               // chặn tạo 2 vòng lặp cùng lúc
+    readSize();
+    score = 0;
+    lives = START_LIVES;
+    fallSpeed = START_FALL;
+    keys.left = keys.right = false;
+    updateHud();
+    overlay.classList.remove("show");
+    setBasket((W - basket.offsetWidth) / 2);
+    spawnApple();
+    startBtn.disabled = true;
+    startBtn.blur();                   // tránh Space/Enter bấm lại nút khi đang chơi
+    running = true;
+    lastTime = performance.now();
+    rafId = requestAnimationFrame(loop);
+  }
+
+  startBtn.addEventListener("click", start);
+
+  // Bàn phím
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "ArrowLeft")  { keys.left = true;  if (running) e.preventDefault(); }
+    if (e.key === "ArrowRight") { keys.right = true; if (running) e.preventDefault(); }
+  });
+  document.addEventListener("keyup", function (e) {
+    if (e.key === "ArrowLeft")  keys.left = false;
+    if (e.key === "ArrowRight") keys.right = false;
+  });
+  window.addEventListener("blur", function () { keys.left = keys.right = false; });
+
+  // Nút cảm ứng cho điện thoại (giữ để di chuyển)
+  function bindPad(id, side) {
+    var el = document.getElementById(id);
+    function on(e) { e.preventDefault(); keys[side] = true; }
+    function off() { keys[side] = false; }
+    el.addEventListener("pointerdown", on);
+    el.addEventListener("pointerup", off);
+    el.addEventListener("pointerleave", off);
+    el.addEventListener("pointercancel", off);
+  }
+  bindPad("leftBtn", "left");
+  bindPad("rightBtn", "right");
+
+  // Rời trang: dừng vòng lặp
+  window.addEventListener("pagehide", stopLoop);
+
+  // Trạng thái ban đầu
+  readSize();
+  setBasket((W - basket.offsetWidth) / 2);
+  appleX = (W - apple.offsetWidth) / 2;
+  appleY = 20;
+  placeApple();
+  updateHud();
+})();
+</script>
+</body>
+</html>
