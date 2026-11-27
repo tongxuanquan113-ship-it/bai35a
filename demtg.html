@@ -136,10 +136,11 @@
   var remaining = DURATION_MS;  // ms còn lại khi đang dừng
   var endTime = 0;              // mốc thời gian kết thúc (khi đang chạy)
   var timerId = null;           // id của setInterval, null = không chạy
-  var serverOffset = 0;         // chênh lệch giữa giờ server và giờ máy người dùng
+  var serverOffset = 0;         // chênh lệch giữa giờ server và giờ máy (chỉ để hiển thị / dùng cho mốc tuyệt đối)
 
-  // "Bây giờ" theo giờ server (nếu đồng bộ được), nếu không thì theo giờ máy
-  function now() { return Date.now() + serverOffset; }
+  // Đồng hồ đếm theo giờ máy. Đây là đếm ngược TƯƠNG ĐỐI (bắt đầu từ lúc bấm nút)
+  // nên không được cộng độ lệch server vào đây, nếu không số sẽ bị nhảy khi đồng bộ xong.
+  function now() { return Date.now(); }
 
   function pad(n) { return n < 10 ? "0" + n : String(n); }
 
@@ -215,17 +216,23 @@
     if (!document.hidden && timerId !== null) tick();
   });
 
-  // Đồng bộ giờ server: lấy header "Date" của chính trang này
+  // Đồng bộ giờ server: lấy header "Date" của chính trang này.
+  // Kết quả CHỈ dùng để hiển thị độ lệch. Nếu sau này đếm tới một mốc tuyệt đối do server quy định
+  // (ví dụ giờ kết thúc bài thi), dùng: serverNow = Date.now() + serverOffset.
   function syncServerTime() {
     var t0 = Date.now();
     fetch(location.href, { method: "HEAD", cache: "no-store" })
       .then(function (res) {
         var header = res.headers.get("Date");
         if (!header) throw new Error("no-date");
+        var age = parseInt(res.headers.get("Age") || "0", 10) || 0;  // CDN có thể trả bản cache đã cũ
         var t1 = Date.now();
-        var serverMs = new Date(header).getTime() + (t1 - t0) / 2;  // bù nửa độ trễ mạng
+        var serverMs = new Date(header).getTime() + age * 1000 + (t1 - t0) / 2;  // bù tuổi cache + nửa độ trễ mạng
         serverOffset = serverMs - t1;
-        syncInfo.textContent = "Đã đồng bộ với giờ server (lệch " + Math.round(serverOffset / 1000) + " giây so với máy bạn).";
+        var sec = Math.round(serverOffset / 1000);
+        syncInfo.textContent = Math.abs(sec) <= 2
+          ? "Giờ máy bạn khớp với giờ server."
+          : "Giờ máy bạn lệch khoảng " + Math.abs(sec) + " giây so với server.";
       })
       .catch(function () {
         syncInfo.textContent = "Đang dùng giờ của máy bạn.";
